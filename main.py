@@ -1,8 +1,15 @@
 import nodriver as uc
 import asyncio
 from bs4 import BeautifulSoup
-import pandas as pd
-
+import json
+async def scrape_desc(browser, full_link):
+    page = await browser.get(full_link)
+    await asyncio.sleep(5)
+    html = await page.get_content()
+    soup = BeautifulSoup(html, "html.parser")
+    description_el = soup.find("div", class_= "jobsearch-JobComponent-description css-wppltw eu4oa1w0")
+    descritpion = description_el.get_text(strip=True) if description_el else "N/A"
+    return descritpion
 
 
 async def main():
@@ -11,6 +18,7 @@ async def main():
     current_url = f'{base_url}/jobs?q=data+analyst&start=0'
 
     browser = await uc.start(headless=False)
+    all_jobs = []
 
     while current_url:
 
@@ -36,6 +44,19 @@ async def main():
             href_link = href_element['href'] if href_element else "N/A"
             full_link = base_url + href_link
             print(full_link)
+            description = await scrape_desc(browser, full_link)
+
+            all_jobs.append({
+            "Job Title": job_title,
+            "Company": company,
+            "Location": location,
+            "Salary": salary,
+            "Link": full_link,
+            "Description": description
+        })
+        
+            with open("indeed_jobs.json", "w", encoding="utf-8", errors="replace") as f:
+                json.dump(all_jobs, f, ensure_ascii=False, indent=4)
 
         next_link = soup.select_one('a[data-testid="pagination-page-next"]')
 
@@ -46,6 +67,7 @@ async def main():
         else:
             print("\n✅ No more pages.")
             break
+
 
 
 if __name__ == '__main__':
